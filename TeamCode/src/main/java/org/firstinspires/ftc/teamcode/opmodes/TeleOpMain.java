@@ -1,49 +1,77 @@
 package org.firstinspires.ftc.teamcode.opmodes;
 
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.seattlesolvers.solverslib.command.CommandOpMode;
-import com.seattlesolvers.solverslib.command.InstantCommand;
-import com.seattlesolvers.solverslib.command.button.GamepadButton;
+import com.seattlesolvers.solverslib.command.CommandScheduler;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-
 import org.firstinspires.ftc.teamcode.commands.DriveCommand;
+import org.firstinspires.ftc.teamcode.commands.IntakeCommand;
+import org.firstinspires.ftc.teamcode.commands.ShooterCommand;
+import org.firstinspires.ftc.teamcode.constants.RobotConstants;
 import org.firstinspires.ftc.teamcode.subsystems.DriveSubsystem;
 import org.firstinspires.ftc.teamcode.subsystems.IntakeSubsystem;
+import org.firstinspires.ftc.teamcode.subsystems.ShooterSubsystem;
 
 @TeleOp(name = "SolversLib: TeleOp Mecanum", group = "TeleOp")
 public class TeleOpMain extends CommandOpMode {
-
   private DriveSubsystem driveSubsystem;
-  //private IntakeSubsystem intakeSubsystem;
+  private IntakeSubsystem intakeSubsystem;
+  private ShooterSubsystem shooterSubsystem;
   private GamepadEx driverGamepad;
 
   @Override
   public void initialize() {
-    // 1. Inicializar el Gamepad envolviéndolo en el GamepadEx de SolversLib
+    reset();
     driverGamepad = new GamepadEx(gamepad1);
-
-    // 2. Inicializar Subsistemas
     driveSubsystem = new DriveSubsystem(hardwareMap);
-    //intakeSubsystem = new IntakeSubsystem(hardwareMap);
+    intakeSubsystem = new IntakeSubsystem(hardwareMap);
+    shooterSubsystem = new ShooterSubsystem(hardwareMap);
+    configureCommands();
+    telemetry.addData("Estado", "Chasis, intake y shooter listos");
+    telemetry.addData("Potencia maxima", RobotConstants.DRIVE_MAX_POWER);
+    telemetry.update();
+  }
 
-    // 3. Asignar Comando por defecto para el chasis
+  private void configureCommands() {
     driveSubsystem.setDefaultCommand(new DriveCommand(
-      driveSubsystem,
-      () -> driverGamepad.getLeftX(),   // Strafe (Eje X del stick izquierdo)
-      () -> driverGamepad.getLeftY(),   // Forward (Eje Y del stick izquierdo)
-      () -> driverGamepad.getRightX()   // Turn (Eje X del stick derecho)
-    ));
+        driveSubsystem, driverGamepad::getLeftX, driverGamepad::getLeftY,
+        driverGamepad::getRightX));
+    intakeSubsystem.setDefaultCommand(new IntakeCommand(
+        intakeSubsystem, () -> driverGamepad.getButton(GamepadKeys.Button.A),
+        () -> driverGamepad.getButton(GamepadKeys.Button.B)));
+    shooterSubsystem.setDefaultCommand(new ShooterCommand(
+        shooterSubsystem, () -> driverGamepad.getButton(GamepadKeys.Button.X)));
+  }
 
-    // 4. Asignar Eventos a los Botones para el Intake
-    // Al mantener A -> Tragar; Al soltar A -> Parar
-   // new GamepadButton(driverGamepad, GamepadKeys.Button.A)
-     // .whenPressed(new InstantCommand(intakeSubsystem::intake, intakeSubsystem))
-      //.whenReleased(new InstantCommand(intakeSubsystem::stop, intakeSubsystem));
+  @Override
+  public void run() {
+    super.run();
+    telemetry.addData("Estado", "TeleOp activo");
+    telemetry.addData("Shooter objetivo (RPM)", shooterSubsystem.getTargetRpm());
+    telemetry.addData("Shooter velocidad (RPM)", shooterSubsystem.getVelocityRpm());
+    telemetry.addData("Shooter potencia", shooterSubsystem.getOutputPower());
+    if (RobotConstants.SHOOTER_TARGET_RPM <= 0) {
+      telemetry.addData("Shooter", "Configurar RPM objetivo antes de usar");
+    }
+    telemetry.addData("Potencia maxima", RobotConstants.DRIVE_MAX_POWER);
+    telemetry.update();
+  }
 
-    // Al mantener B -> Expulsar; Al soltar B -> Parar
-   // new GamepadButton(driverGamepad, GamepadKeys.Button.B)
-    //  .whenPressed(new InstantCommand(intakeSubsystem::outtake, intakeSubsystem))
-     // .whenReleased(new InstantCommand(intakeSubsystem::stop, intakeSubsystem));
+  @Override
+  public void end() {
+    try {
+      CommandScheduler.getInstance().cancelAll();
+    } finally {
+      try {
+        if (shooterSubsystem != null) shooterSubsystem.stop();
+      } finally {
+        try {
+          if (intakeSubsystem != null) intakeSubsystem.stop();
+        } finally {
+          if (driveSubsystem != null) driveSubsystem.stop();
+        }
+      }
+    }
   }
 }
