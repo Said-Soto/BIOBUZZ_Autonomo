@@ -9,6 +9,7 @@ import com.seattlesolvers.solverslib.util.TelemetryData;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
+@com.qualcomm.robotcore.eventloop.opmode.Disabled
 @TeleOp
 public class PedroTeleOpSample extends CommandOpMode {
     Follower follower;

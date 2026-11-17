@@ -18,6 +18,7 @@ import com.seattlesolvers.solverslib.util.TelemetryData;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
+@com.qualcomm.robotcore.eventloop.opmode.Disabled
 @Autonomous
 public class PedroAutoSample extends CommandOpMode {
     private Follower follower;

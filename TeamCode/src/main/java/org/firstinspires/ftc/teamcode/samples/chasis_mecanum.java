@@ -5,6 +5,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
+@com.qualcomm.robotcore.eventloop.opmode.Disabled
 @TeleOp(name = "TeleOp Mecanum Oficial", group = "Chasis")
 public class chasis_mecanum extends LinearOpMode {
 
