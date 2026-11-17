@@ -28,4 +28,8 @@ public class DriveCommand extends CommandBase {
       turn.getAsDouble()
     );
   }
+  @Override
+  public void end(boolean interrupted) {
+    driveSubsystem.stop();
+  }
 }
