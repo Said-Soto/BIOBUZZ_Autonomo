@@ -44,6 +44,54 @@ Cerrar el control de posición con encoder y límites de giro. Filtrar deteccion
 
 **Comprobar.** Desde las tres posiciones, la torreta converge hacia la abertura y muestra ID, ángulo objetivo/real y error. Al ocultar el objetivo o detectar uno inválido, bloquea el disparo y realiza una búsqueda limitada o cancela. La trigonometría determina dirección; RPM y elevación del tiro se calibran con pelotas reales.
 
+
+### Seguimiento durante el movimiento, activado por botón
+
+**Indicación.** En TeleOp, mantener presionado el botón de apuntado para que la torreta conserve la dirección hacia la abertura aunque el chasis avance, se desplace lateralmente o gire. Al soltarlo, cancelar el seguimiento y devolver la torreta al control manual, sin recentrarla automáticamente. Con el mando manual en reposo, detener la orden de giro; si existe retención de posición, retener únicamente el ángulo relativo al chasis. El botón no acciona el alimentador ni dispara.
+
+Utilizar la asignación de apuntado del TeleOp si ya existe y documentarla. Interpretar la entrada como **mantener presionado**, no como un interruptor que queda activado tras una pulsación. Mientras esté presionado, el seguimiento tiene prioridad sobre el mando manual de torreta. Un solo controlador escribe a su motor.
+
+**Mini tutorial.** Calcular el ángulo en cada ciclo a partir de la posición actual del pivote y del rumbo actual del chasis. Girar el chasis cambia el ángulo relativo de torreta; trasladarlo también cambia la dirección hacia el objetivo. La visión identifica y corrige el objetivo, y la odometría permite actualizar la geometría entre imágenes.
+
+Para un objetivo expresado en el marco de campo, con rumbo de chasis psi, offset de pivote (a,b) en chasis y ángulo theta de torreta respecto a su cero:
+
+~~~text
+pivoteX = robotX + a*cos(psi) - b*sin(psi)
+pivoteY = robotY + a*sin(psi) + b*cos(psi)
+dx = objetivoX - pivoteX
+dy = objetivoY - pivoteY
+anguloObjetivo = wrap(atan2(dy, dx) - psi - offsetCeroTorreta)
+error = atan2(sin(anguloObjetivo - theta),
+              cos(anguloObjetivo - theta))
+~~~
+
+Todas las poses deben usar el mismo marco y unidades. wrap representa normalización angular. Elegir un ángulo equivalente que respete límites de giro y cables; no ordenar automáticamente el camino más corto si cruza un límite. Si el objetivo queda fuera de alcance mecánico, bloquear el disparo y mostrarlo en telemetría.
+
+Cuando Limelight detecta la abertura, convertir su posición al campo usando pose del chasis y ángulo de torreta del instante de captura. No aplicar una imagen antigua como si fuera actual. Actualizar esa referencia con nuevas detecciones válidas y reinvalidarla si la colmena cambia de estado. El objetivo observado puede moverse; no conservar indefinidamente sus coordenadas ni utilizarlas para corregir la pose del robot como una referencia fija.
+
+Lógica de control propuesta:
+
+~~~text
+si botonApuntado NO esta presionado:
+    cancelar seguimiento y solicitudes automaticas pendientes
+    ejecutar control manual de torreta
+si botonApuntado esta presionado:
+    seleccionar o actualizar objetivo valido
+    si objetivo y localizacion son confiables:
+        recalcular angulo con la pose actual
+        controlar torreta con encoder
+    si no hay informacion confiable:
+        detener giro automatico y bloquear disparo
+~~~
+
+Definir un tiempo corto y medido para conservar seguimiento con odometría al perder una imagen, solo si la última referencia sigue siendo confiable. Mostrar BUSCANDO, SIGUIENDO, OBJETIVO_PERDIDO o FUERA_DE_LIMITE. Revalidar el objetivo al volver a presionar el botón; evitar saltos hacia una detección anterior.
+
+**Comprobar dentro del mismo video.** Mantener el botón y ejecutar avance, desplazamiento lateral y giro de chasis: la torreta debe compensarlos y mantener la abertura dentro de la tolerancia angular definida. Soltar el botón durante el movimiento y demostrar que cesan las correcciones automáticas. Presionarlo otra vez y comprobar readquisición; ocultar brevemente el objetivo para verificar la respuesta. Registrar el error durante el movimiento, no solo al detenerse.
+
+El seguimiento puede mantenerse mientras se mueve el robot; la autorización de disparo sigue requiriendo alineación y condiciones de tiro validadas. Para acertar mientras el robot se traslada, incorporar además compensación de velocidad y tiempo de vuelo mediante pruebas específicas: apuntar al objetivo en movimiento del chasis no resuelve por sí solo la trayectoria de la pelota.
+
+En AUTO no se leen botones. Reutilizar el mismo controlador de seguimiento, habilitado y deshabilitado por las fases de la rutina. En TeleOp, la habilitación depende exclusivamente del botón mantenido.
+
 ## Reto 3. Autónomo completo con decisiones y recuperación
 
 **Indicación.** Integrar el recorrido y el apuntado en una rutina que dispare precargas, realice un ciclo de recolección si alcanza el tiempo y termine estacionada. Programar también la opción de omitir el ciclo y estacionarse directamente.
@@ -76,7 +124,7 @@ Añadir enlace al commit probado y al video. Las capturas o gráficas que ayuden
 
 ### Un video de 3 a 5 minutos
 
-Mostrar el apuntado desde las tres posiciones, una ejecución completa con ciclo de recolección y una prueba de pérdida de visión. Dejar cada ejecución completa sin cortes internos ni aceleración. Mostrar el campo y telemetría legible de fase, tiempo, ID, ángulo de torreta y RPM. Explicar brevemente la decisión de omitir otro ciclo.
+Mostrar el apuntado desde las tres posiciones y su seguimiento mientras el chasis se mueve con el botón mantenido; demostrar también la liberación del botón. Incluir una ejecución completa con ciclo de recolección y una prueba de pérdida de visión. Dejar cada ejecución completa sin cortes internos ni aceleración. Mostrar el campo y telemetría legible de fase, tiempo, ID, ángulo de torreta y RPM. Explicar brevemente la decisión de omitir otro ciclo.
 
 No hace falta grabar las cinco pruebas en el video final ni hacer una presentación adicional. Utilizar resultados reales de la misma versión de código identificada en el reporte.
 
